@@ -1,0 +1,164 @@
+#!/usr/bin/python
+# -*- coding: utf8 -*-
+
+# bgtimer
+# Board Game Timer
+# stopwatch for family games
+# Author: Alfonso E.M. <alfonso@el-magnifico.org>
+# License: Free (GPL3) 
+# Version: 1.0 - 13/Dec/2010
+
+import pygame
+from pygame.locals import *
+import os, sys
+import random
+
+import sys; sys.path.insert(0, "pgu")
+from pgu import gui
+
+
+WIDTH=1024
+HEIGHT=768
+
+# Some handy functions
+def load_sound(name):
+  fullname = os.path.join('sounds', name)
+  try:
+    sound = pygame.mixer.Sound(fullname)
+  except pygame.error, message:
+    print 'Cannot load sound:', name
+    raise SystemExit, message
+  return sound
+
+def isnumeric(x):
+  return x.replace(" ","").replace("-", "").isdigit()
+
+def suma():
+  for c in range(0,4):
+    t=0  
+    for l in range(0,10):
+      if isnumeric(points[l][c].value):
+        t=t+int(points[l][c].value)
+    total[c].value=str(t)  
+  app.repaintall()
+
+# End of functions
+
+
+# MAIN
+
+alarm_minutes=1
+alarm_seconds=5
+
+
+# Pygame initialization
+
+pygame.init()
+
+screen=pygame.display.set_mode((WIDTH,HEIGHT),pygame.FULLSCREEN)
+#screen=pygame.display.set_mode((WIDTH,HEIGHT))
+  
+# Loading sounds
+snd_warning=load_sound("alert.wav")
+snd_next=load_sound("newmessage.wav")
+snd_alarm=load_sound("ring.wav")
+
+# Loading fonts
+fnt_timer = pygame.font.Font("Inconsolata.otf", 350)
+fnt_info = pygame.font.Font("Inconsolata.otf", 30)
+
+# Scoreboard dialog
+app = gui.Desktop()
+app.connect(gui.QUIT,app.quit,None)
+
+c = gui.Table()
+
+c.tr()
+c.td(gui.Label("Score"),colspan=5)
+
+c.tr()
+c.td(gui.Label(""))
+c.td(gui.Input(value='A',size=8))
+c.td(gui.Input(value='B',size=8))
+c.td(gui.Input(value='C',size=8))
+c.td(gui.Input(value='D',size=8))
+
+points=[]
+
+for l in range(0,10):
+  points.append([])
+  c.tr()
+  c.td(gui.Label("%2i" % (l+1)))
+  for n in range(0,4):
+    points[l].append(gui.Input(value="     ",size=5))
+    c.td(points[l][n])
+
+c.tr()
+total=[]
+c.td(gui.Label("total:"))
+for t in range(0,4):
+  total.append(gui.Label("    0"))
+  c.td(total[t])
+
+c.tr()
+bt_sum=gui.Button("Suma")
+bt_ok=gui.Button("OK")
+c.td(gui.Label(""),colspan=2)
+c.td(bt_sum)
+c.td(bt_ok)
+
+bt_sum.connect(gui.CLICK,suma)
+bt_ok.connect(gui.CLICK,app.quit,None)
+
+###
+
+while True:
+ # Stopwatch screen
+ pygame.mouse.set_visible(0)
+ screen.fill((0,0,0))
+ text = fnt_info.render("Esc=Quit | SPACE=Restart | Tab=Menu", 1, (100,255,100))
+ width,height=text.get_size()
+ x=WIDTH/2-width/2
+ screen.blit(text, (x,10))
+
+ pygame.display.flip()
+
+###
+
+ oldseconds=0
+ startms=pygame.time.get_ticks()
+
+ while True:
+  ms=pygame.time.get_ticks()-startms
+  seconds=int(ms/1000)
+  if seconds != oldseconds:
+    screen.fill((0,0,0),(0,50,WIDTH,HEIGHT-50))
+    minutes,seconds=divmod(seconds,60)
+    text = fnt_timer.render("%02i:%02i" % (minutes,seconds), 1, (255,255,255))
+    width,height=text.get_size()
+    x=WIDTH/2-width/2
+    y=HEIGHT/2-height/2
+    screen.blit(text, (x,y))
+    pygame.display.flip()
+   
+    if minutes == alarm_minutes and seconds == alarm_seconds:
+      snd_alarm.play()
+      pygame.time.delay(1000)
+                  
+    oldseconds = seconds 
+
+  event=pygame.event.pump()
+  keys_state=pygame.key.get_pressed()
+  if keys_state[K_ESCAPE]:
+    sys.exit(0)
+  if keys_state[K_SPACE]:
+    snd_next.play()
+    startms=pygame.time.get_ticks()
+  if keys_state[K_TAB]:
+    pygame.mouse.set_visible(1)
+    app.run(c)
+    break
+
+  pygame.time.delay(100)
+
+
